@@ -172,7 +172,7 @@ function cargarGastos(gastosAlmacenados) {
 	// Reset de la variable global gastos
 	gastos = [];
 
-	// Iteramso sobre los gastos almacenados en localStorage
+	// Iteramos sobre los gastos almacenados en localStorage
 	for (let gasto of gastosAlmacenados) {
 		// Procederemos a la "rehidratación" de cada gasto guardado solo con sus propiedades como un string
 		let gastoRehidratado = new CrearGasto(); // Se crea con las propiedades sin asignar

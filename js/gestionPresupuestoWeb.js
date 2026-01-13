@@ -3,6 +3,43 @@
 /* Importacion por módulos */
 import * as gestion from "./gestionPresupuesto.js"; // gestion es el nombre de módulo
 
+/* cargarGastosApi */
+async function cargarGastosApi() {
+	const URL_BASE = "https://suhhtqjccd.execute-api.eu-west-1.amazonaws.com/latest/";
+
+	let inputUsuario = document.getElementById("nombre_usuario");
+	let nombreUsuario = inputUsuario.value.trim().toLowerCase();
+
+	// Necesitamos controlar que no se realiza la petición sin nombre de usuario
+	if (nombreUsuario === "") {
+		alert("Introduzca un nombre de usuario");
+		return;
+	}
+
+	let url = URL_BASE + nombreUsuario;
+
+	try {
+		let respuesta = await fetch(url); // Sin opciones hace un GET
+
+		// Control de respuesta HTTP satisfactoria
+		if (!respuesta.ok) {
+			throw new Error("No se han podido obtener los datos.");
+		}
+
+		let gastosApi = await respuesta.json(); // Array con los gastos almacenados en la API
+
+		/* Una vez tenemos los datos en el array, necesitamos cargarlos a la variable global gastos y posteriormente pintarlos. Utilizamos esta función porque necesitamos
+		rehidratarlos, al obtener objetos sin funcionalidad, necesitamos crear objetos con CrearGasto() */
+
+		gestion.cargarGastos(gastosApi);
+		repintar();
+	} catch (error) {
+		console.log(`Error en la petición: ${error}`);
+	}
+}
+// Asignamos la función al botón correspondiente
+document.getElementById("cargar-gastos-api").addEventListener("click", cargarGastosApi);
+
 /* mostrarDatoEnId -
     idElemento - id del elemento HTML donde se insertará la estructura generada
     valor - Valor que se escribirá y se mostrará en el elemento con el Id idElemento
@@ -85,6 +122,15 @@ function mostrarGastoWeb(idElemento, gasto) {
 	borrarManejador.gasto = gasto;
 	botonBorrar.addEventListener("click", borrarManejador);
 
+	// Botón borrar API
+	let botonBorrarApi = document.createElement("button");
+	botonBorrarApi.type = "button";
+	botonBorrarApi.classList.add("gasto-borrar-api");
+	botonBorrarApi.textContent = "Borrar (API)";
+	let borrarApiManejador = Object.create(gastoBorrarApi);
+	borrarApiManejador.gasto = gasto;
+	botonBorrarApi.addEventListener("click", borrarApiManejador);
+
 	// 3. Agregamos los elementos generados al contenedor padre
 	divGasto.appendChild(gastoDescripcion);
 	divGasto.appendChild(gastoFecha);
@@ -92,8 +138,9 @@ function mostrarGastoWeb(idElemento, gasto) {
 	divGasto.appendChild(gastoEtiquetas);
 
 	divGasto.appendChild(botonEditar);
-	divGasto.appendChild(botonBorrar);
 	divGasto.appendChild(botonEditarFormulario);
+	divGasto.appendChild(botonBorrar);
+	divGasto.appendChild(botonBorrarApi);
 
 	// 4. Por último, lo agregamos al elemento que nos pasan por parámetro
 	elementoGeneral.appendChild(divGasto);
@@ -277,6 +324,44 @@ let BorrarEtiquetasHadle = {
 		const etiquetaEliminar = evento.target.textContent;
 		this.gasto.borrarEtiquetas(etiquetaEliminar);
 		repintar();
+	},
+};
+
+/* GastoBorrarApi */
+/* Al tener que obtener el id del gasto, necesitamos que sea un objeto manejador y no una función */
+let gastoBorrarApi = {
+	hadleEvent: async function (evento) {
+		// Generación de la URL
+		const URL_BASE = "https://suhhtqjccd.execute-api.eu-west-1.amazonaws.com/latest/";
+
+		let inputUsuario = document.getElementById("nombre_usuario");
+		let nombreUsuario = inputUsuario.value.trim().toLowerCase();
+
+		if (nombreUsuario === "") {
+			alert("introduzca un nombre de usuario");
+			return;
+		}
+
+		// Debemos obtener la posición del gasto en el array
+		let gastoId = this.gasto.id.toString();
+
+		// Generamos la url completa
+		let url = `${URL_BASE}${nombre}/${gastoId}`;
+
+		// Realizamos la petición
+		try {
+			let respuesta = await fetch(url, {
+				method: "DELETE",
+			});
+
+			if (respuesta.ok) {
+				alert("Borrado correctamente!");
+			}
+
+			cargarGastosApi();
+		} catch (error) {
+			alert(`Error: ${error}`);
+		}
 	},
 };
 
