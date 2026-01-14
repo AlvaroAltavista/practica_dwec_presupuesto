@@ -238,6 +238,7 @@ function mostrarGastosAgrupadosWeb(idElemento, agrup, periodo) {
 /* repintar - Función que recarga la página cada vez que se carga, modifica o borra un dato */
 function repintar() {
 	// 1. Mostrar el presupuesto
+	document.getElementById("presupuesto").replaceChildren;
 	mostrarDatoEnId("presupuesto", gestion.mostrarPresupuesto());
 
 	// 2. Mostrar gastos totales
@@ -388,7 +389,7 @@ let gastoBorrarApi = {
 		let nombreUsuario = inputUsuario.value.trim().toLowerCase();
 
 		if (nombreUsuario === "") {
-			alert("introduzca un nombre de usuario");
+			alert("Introduzca un nombre de usuario");
 			return;
 		}
 
@@ -439,6 +440,47 @@ function cancelarEditar(evento) {
 	repintar();
 }
 
+// EnviarApiHandleFormulario - Objeto manejador del evento de enviar la modificación del gasto a la API
+
+let EnviarApiHandleFormulario = {
+	handleEvent: async function (evento) {
+		// Creación de la URL
+		const URL_BASE = "https://suhhtqjccd.execute-api.eu-west-1.amazonaws.com/latest/";
+		let inputUsuario = document.getElementById("nombre_usuario");
+		let nombreUsuario = inputUsuario.value.trim().toLowerCase();
+
+		if (nombreUsuario === "") {
+			alert("Introduzca un nombre de usuario");
+			return;
+		}
+
+		let url = `${URL_BASE}${nombreUsuario}/${this.gasto.gastoId}`;
+
+		// Modificamos los valores del gasto asociado
+		this.gasto.descripcion = document.getElementById("descripcion").value.trim();
+		this.gasto.valor = document.getElementById("valor").value.trim();
+		this.gasto.fecha = document.getElementById("fecha").value;
+		this.gasto.etiquetas = document.getElementById("etiquetas").value;
+
+		// Petición PUT
+		try {
+			let respuesta = await fetch(url, {
+				method: "PUT",
+				headers: {
+					"Content-Type": "application/json;charset= utf-8",
+				},
+				body: JSON.stringify(this.gasto),
+			});
+
+			console.log("Modificación realizada correctamente.");
+		} catch (error) {
+			alert(`Error: ${error}`);
+		}
+
+		cargarGastosApi();
+	},
+};
+
 let EditarHandleFormulario = {
 	handleEvent: function (evento) {
 		// Desactivamos el resto de botones del gasto
@@ -452,6 +494,7 @@ let EditarHandleFormulario = {
 		let plantillaFormulario = document.getElementById("formulario-template").content.cloneNode(true);
 		let formulario = plantillaFormulario.querySelector("form");
 		let botonCancelar = formulario.querySelector(".cancelar");
+		let botonEnviarApi = formulario.querySelector("#gasto-enviar-api");
 
 		// A la hora de crear el formulario debe rellenar los campos con los datos existentes
 		formulario.elements.descripcion.value = this.gasto.descripcion;
@@ -471,6 +514,11 @@ let EditarHandleFormulario = {
 		confirmarEditarHandle.gasto = this.gasto;
 		formulario.addEventListener("submit", confirmarEditarHandle);
 		botonCancelar.addEventListener("click", cancelarEditar);
+
+		// Añadir manejador al boton Enviar (API)
+		let enviarApiHandleFormulario = Object.create(EnviarApiHandleFormulario);
+		enviarApiHandleFormulario.gasto = this.gasto;
+		botonEnviarApi.addEventListener("click", enviarApiHandleFormulario);
 
 		nodoPadre.append(plantillaFormulario);
 	},
