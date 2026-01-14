@@ -177,6 +177,10 @@ function cargarGastos(gastosAlmacenados) {
 		// Procederemos a la "rehidratación" de cada gasto guardado solo con sus propiedades como un string
 		let gastoRehidratado = new CrearGasto(); // Se crea con las propiedades sin asignar
 
+		if (gasto.etiquetas != "") {
+			gasto.etiquetas = gasto.etiquetas.split(",");
+		}
+
 		// Object.assign fusiona dos objetos. Las propiedades coincidentes las actualiza. Primero se cologa el target y despues el source.
 		Object.assign(gastoRehidratado, gasto);
 

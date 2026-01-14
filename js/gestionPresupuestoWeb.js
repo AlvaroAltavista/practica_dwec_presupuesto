@@ -40,6 +40,54 @@ async function cargarGastosApi() {
 // Asignamos la función al botón correspondiente
 document.getElementById("cargar-gastos-api").addEventListener("click", cargarGastosApi);
 
+/* enviarGastoApi - función manejadora para enviar gasto a la API */
+async function enviarGastoApi() {
+	// Generación de la URL
+	const URL_BASE = "https://suhhtqjccd.execute-api.eu-west-1.amazonaws.com/latest/";
+
+	let inputUsuario = document.getElementById("nombre_usuario");
+	let nombreUsuario = inputUsuario.value.trim().toLowerCase();
+
+	if (nombreUsuario === "") {
+		alert("Introduzca un nombre de usuario");
+		return;
+	}
+
+	console.log("URL generada");
+
+	let url = URL_BASE + nombreUsuario;
+
+	// Recogida de datos
+	let inputDescripcion = document.getElementById("descripcion").value;
+	let inputValor = document.getElementById("valor").value;
+	let inputFecha = document.getElementById("fecha").value;
+	let inputEtiquetas = document.getElementById("etiquetas").value;
+
+	let gasto = {
+		descripcion: inputDescripcion,
+		valor: inputValor,
+		fecha: inputFecha,
+		etiquetas: inputEtiquetas,
+	};
+
+	// Petición POST
+	try {
+		let respuesta = await fetch(url, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json;charset=utf-8",
+			},
+			body: JSON.stringify(gasto),
+		});
+	} catch (error) {
+		alert(`Error: ${error}`);
+	}
+
+	cargarGastosApi();
+}
+
+// Asignación de función manejadora
+
 /* mostrarDatoEnId -
     idElemento - id del elemento HTML donde se insertará la estructura generada
     valor - Valor que se escribirá y se mostrará en el elemento con el Id idElemento
@@ -282,9 +330,11 @@ function nuevoGastoWebFormulario() {
 	let formulario = plantillaFormulario.querySelector("form");
 	let botonCancelar = formulario.querySelector(".cancelar");
 	document.getElementById("controlesprincipales").append(plantillaFormulario);
+	let botonEnviarApi = formulario.querySelector("#gasto-enviar-api");
 
 	formulario.addEventListener("submit", confirmarAnyadir);
 	botonCancelar.addEventListener("click", cancelarAnyadir);
+	botonEnviarApi.addEventListener("click", enviarGastoApi);
 }
 
 /* EditarHandle  - Empieza con mayúscula al ser una funcion constructora */
@@ -330,7 +380,7 @@ let BorrarEtiquetasHadle = {
 /* GastoBorrarApi */
 /* Al tener que obtener el id del gasto, necesitamos que sea un objeto manejador y no una función */
 let gastoBorrarApi = {
-	hadleEvent: async function (evento) {
+	handleEvent: async function (evento) {
 		// Generación de la URL
 		const URL_BASE = "https://suhhtqjccd.execute-api.eu-west-1.amazonaws.com/latest/";
 
@@ -343,10 +393,10 @@ let gastoBorrarApi = {
 		}
 
 		// Debemos obtener la posición del gasto en el array
-		let gastoId = this.gasto.id.toString();
+		let gastoId = this.gasto.gastoId;
 
 		// Generamos la url completa
-		let url = `${URL_BASE}${nombre}/${gastoId}`;
+		let url = `${URL_BASE}${nombreUsuario}/${gastoId}`;
 
 		// Realizamos la petición
 		try {
@@ -395,6 +445,7 @@ let EditarHandleFormulario = {
 		let nodoPadre = evento.currentTarget.parentNode;
 		nodoPadre.querySelector(".gasto-editar").disabled = true;
 		nodoPadre.querySelector(".gasto-borrar").disabled = true;
+		nodoPadre.querySelector(".gasto-borrar-api").disabled = true;
 		evento.currentTarget.disabled = true;
 
 		// Mostramos el template y guardamos las referencias
