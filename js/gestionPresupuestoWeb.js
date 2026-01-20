@@ -3,91 +3,6 @@
 /* Importacion por módulos */
 import * as gestion from "./gestionPresupuesto.js"; // gestion es el nombre de módulo
 
-/* cargarGastosApi */
-async function cargarGastosApi() {
-	const URL_BASE = "https://suhhtqjccd.execute-api.eu-west-1.amazonaws.com/latest/";
-
-	let inputUsuario = document.getElementById("nombre_usuario");
-	let nombreUsuario = inputUsuario.value.trim().toLowerCase();
-
-	// Necesitamos controlar que no se realiza la petición sin nombre de usuario
-	if (nombreUsuario === "") {
-		alert("Introduzca un nombre de usuario");
-		return;
-	}
-
-	let url = URL_BASE + nombreUsuario;
-
-	try {
-		let respuesta = await fetch(url); // Sin opciones hace un GET
-
-		// Control de respuesta HTTP satisfactoria
-		if (!respuesta.ok) {
-			throw new Error("No se han podido obtener los datos.");
-		}
-
-		let gastosApi = await respuesta.json(); // Array con los gastos almacenados en la API
-
-		/* Una vez tenemos los datos en el array, necesitamos cargarlos a la variable global gastos y posteriormente pintarlos. Utilizamos esta función porque necesitamos
-		rehidratarlos, al obtener objetos sin funcionalidad, necesitamos crear objetos con CrearGasto() */
-
-		gestion.cargarGastos(gastosApi);
-		repintar();
-	} catch (error) {
-		console.log(`Error en la petición: ${error}`);
-	}
-}
-// Asignamos la función al botón correspondiente
-document.getElementById("cargar-gastos-api").addEventListener("click", cargarGastosApi);
-
-/* enviarGastoApi - función manejadora para enviar gasto a la API */
-async function enviarGastoApi() {
-	// Generación de la URL
-	const URL_BASE = "https://suhhtqjccd.execute-api.eu-west-1.amazonaws.com/latest/";
-
-	let inputUsuario = document.getElementById("nombre_usuario");
-	let nombreUsuario = inputUsuario.value.trim().toLowerCase();
-
-	if (nombreUsuario === "") {
-		alert("Introduzca un nombre de usuario");
-		return;
-	}
-
-	console.log("URL generada");
-
-	let url = URL_BASE + nombreUsuario;
-
-	// Recogida de datos
-	let inputDescripcion = document.getElementById("descripcion").value;
-	let inputValor = document.getElementById("valor").value;
-	let inputFecha = document.getElementById("fecha").value;
-	let inputEtiquetas = document.getElementById("etiquetas").value;
-
-	let gasto = {
-		descripcion: inputDescripcion,
-		valor: inputValor,
-		fecha: inputFecha,
-		etiquetas: inputEtiquetas,
-	};
-
-	// Petición POST
-	try {
-		let respuesta = await fetch(url, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json;charset=utf-8",
-			},
-			body: JSON.stringify(gasto),
-		});
-	} catch (error) {
-		alert(`Error: ${error}`);
-	}
-
-	cargarGastosApi();
-}
-
-// Asignación de función manejadora
-
 /* mostrarDatoEnId -
     idElemento - id del elemento HTML donde se insertará la estructura generada
     valor - Valor que se escribirá y se mostrará en el elemento con el Id idElemento
@@ -202,6 +117,7 @@ function mostrarGastoWeb(idElemento, gasto) {
 function mostrarGastosAgrupadosWeb(idElemento, agrup, periodo) {
 	// 1. Seleccionamos el elemento HTML donde insertaremos la estructura
 	let elementoGeneral = document.getElementById(idElemento);
+	elementoGeneral.innerHTML = "";
 
 	// 2. Generamos los elementos a insertar
 	let divAgrupacion = document.createElement("div");
@@ -232,7 +148,59 @@ function mostrarGastosAgrupadosWeb(idElemento, agrup, periodo) {
 		divAgrupacion.appendChild(agrupacionDato);
 	}
 
+	// 3. Estilos
+	elementoGeneral.style.width = "33%";
+	elementoGeneral.style.display = "inline-block";
+
+	// 4. Elemento <canvas> necesario para la gráfica
+	let chart = document.createElement("canvas");
+	// Variable para indicar a la gráfica el período temporal del eje X
+	let unit = "";
+	switch (periodo) {
+		case "anyo":
+			unit = "year";
+			break;
+		case "mes":
+			unit = "month";
+			break;
+		case "dia":
+		default:
+			unit = "day";
+			break;
+	}
+
+	// 5. Generación de la gráfica
+	const miGrafica = new Chart(chart.getContext("2d"), {
+		type: "bar",
+		data: {
+			datasets: [
+				{
+					// Título de la gráfica
+					label: `Gastos por ${periodo}`,
+					backgroundColor: "#555555",
+					// data contiene los datos a representar que se obtienen por parámetro que es un array de gastos agrupados
+					data: agrup,
+				},
+			],
+		},
+		options: {
+			scales: {
+				x: {
+					type: "time",
+					time: {
+						// Indicamos la unidad correspondiente en función de si utilizamos días, meses o años que hemos guardado en unit
+						unit: unit,
+					},
+				},
+				y: {
+					beginAtZero: true,
+				},
+			},
+		},
+	});
+
 	elementoGeneral.appendChild(divAgrupacion);
+	elementoGeneral.appendChild(chart);
 }
 
 /* repintar - Función que recarga la página cada vez que se carga, modifica o borra un dato */
@@ -256,6 +224,17 @@ function repintar() {
 	gastos.forEach((gasto) => {
 		mostrarGastoWeb("listado-gastos-completo", gasto);
 	});
+
+	// 6. Agrupación de gastos
+	// 6. Agrupaciones
+	let agrup1 = gestion.agruparGastos("dia");
+	mostrarGastosAgrupadosWeb("agrupacion-dia", agrup1, "día");
+
+	let agrup2 = gestion.agruparGastos("mes");
+	mostrarGastosAgrupadosWeb("agrupacion-mes", agrup2, "mes");
+
+	let agrup3 = gestion.agruparGastos("anyo");
+	mostrarGastosAgrupadosWeb("agrupacion-anyo", agrup3, "año");
 }
 
 /* Manejadores de eventos */
@@ -336,6 +315,7 @@ function nuevoGastoWebFormulario() {
 	formulario.addEventListener("submit", confirmarAnyadir);
 	botonCancelar.addEventListener("click", cancelarAnyadir);
 	botonEnviarApi.addEventListener("click", enviarGastoApi);
+	botonEnviarApi.addEventListener("click", cancelarAnyadir);
 }
 
 /* EditarHandle  - Empieza con mayúscula al ser una funcion constructora */
@@ -375,44 +355,6 @@ let BorrarEtiquetasHadle = {
 		const etiquetaEliminar = evento.target.textContent;
 		this.gasto.borrarEtiquetas(etiquetaEliminar);
 		repintar();
-	},
-};
-
-/* GastoBorrarApi */
-/* Al tener que obtener el id del gasto, necesitamos que sea un objeto manejador y no una función */
-let gastoBorrarApi = {
-	handleEvent: async function (evento) {
-		// Generación de la URL
-		const URL_BASE = "https://suhhtqjccd.execute-api.eu-west-1.amazonaws.com/latest/";
-
-		let inputUsuario = document.getElementById("nombre_usuario");
-		let nombreUsuario = inputUsuario.value.trim().toLowerCase();
-
-		if (nombreUsuario === "") {
-			alert("Introduzca un nombre de usuario");
-			return;
-		}
-
-		// Debemos obtener la posición del gasto en el array
-		let gastoId = this.gasto.gastoId;
-
-		// Generamos la url completa
-		let url = `${URL_BASE}${nombreUsuario}/${gastoId}`;
-
-		// Realizamos la petición
-		try {
-			let respuesta = await fetch(url, {
-				method: "DELETE",
-			});
-
-			if (respuesta.ok) {
-				alert("Borrado correctamente!");
-			}
-
-			cargarGastosApi();
-		} catch (error) {
-			alert(`Error: ${error}`);
-		}
 	},
 };
 
@@ -600,6 +542,129 @@ function filtrarGastosWeb(evento) {
 
 // Asignación del manejador de eventos al submit del formulario de filtrado
 document.getElementById("formulario-filtrado").addEventListener("submit", filtrarGastosWeb);
+
+/* Programación asíncrona */
+
+/* cargarGastosApi */
+async function cargarGastosApi() {
+	const URL_BASE = "https://suhhtqjccd.execute-api.eu-west-1.amazonaws.com/latest/";
+
+	let inputUsuario = document.getElementById("nombre_usuario");
+	let nombreUsuario = inputUsuario.value.trim().toLowerCase();
+
+	// Necesitamos controlar que no se realiza la petición sin nombre de usuario
+	if (nombreUsuario === "") {
+		alert("Introduzca un nombre de usuario");
+		return;
+	}
+
+	let url = URL_BASE + nombreUsuario;
+
+	try {
+		let respuesta = await fetch(url); // Sin opciones hace un GET
+
+		// Control de respuesta HTTP satisfactoria
+		if (!respuesta.ok) {
+			throw new Error("No se han podido obtener los datos.");
+		}
+
+		let gastosApi = await respuesta.json(); // Array con los gastos almacenados en la API
+
+		/* Una vez tenemos los datos en el array, necesitamos cargarlos a la variable global gastos y posteriormente pintarlos. Utilizamos esta función porque necesitamos
+		rehidratarlos, al obtener objetos sin funcionalidad, necesitamos crear objetos con CrearGasto() */
+
+		gestion.cargarGastos(gastosApi);
+		repintar();
+	} catch (error) {
+		console.log(`Error en la petición: ${error}`);
+	}
+}
+// Asignamos la función al botón correspondiente
+document.getElementById("cargar-gastos-api").addEventListener("click", cargarGastosApi);
+
+/* enviarGastoApi - función manejadora para enviar gasto a la API */
+async function enviarGastoApi() {
+	// Generación de la URL
+	const URL_BASE = "https://suhhtqjccd.execute-api.eu-west-1.amazonaws.com/latest/";
+
+	let inputUsuario = document.getElementById("nombre_usuario");
+	let nombreUsuario = inputUsuario.value.trim().toLowerCase();
+
+	if (nombreUsuario === "") {
+		alert("Introduzca un nombre de usuario");
+		return;
+	}
+
+	console.log("URL generada");
+
+	let url = URL_BASE + nombreUsuario;
+
+	// Recogida de datos
+	let inputDescripcion = document.getElementById("descripcion").value;
+	let inputValor = document.getElementById("valor").value;
+	let inputFecha = document.getElementById("fecha").value;
+	let inputEtiquetas = document.getElementById("etiquetas").value;
+
+	let gasto = {
+		descripcion: inputDescripcion,
+		valor: inputValor,
+		fecha: inputFecha,
+		etiquetas: inputEtiquetas,
+	};
+
+	// Petición POST
+	try {
+		let respuesta = await fetch(url, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json;charset=utf-8",
+			},
+			body: JSON.stringify(gasto),
+		});
+	} catch (error) {
+		alert(`Error: ${error}`);
+	}
+
+	cargarGastosApi();
+}
+
+/* GastoBorrarApi */
+/* Al tener que obtener el id del gasto, necesitamos que sea un objeto manejador y no una función */
+let gastoBorrarApi = {
+	handleEvent: async function (evento) {
+		// Generación de la URL
+		const URL_BASE = "https://suhhtqjccd.execute-api.eu-west-1.amazonaws.com/latest/";
+
+		let inputUsuario = document.getElementById("nombre_usuario");
+		let nombreUsuario = inputUsuario.value.trim().toLowerCase();
+
+		if (nombreUsuario === "") {
+			alert("Introduzca un nombre de usuario");
+			return;
+		}
+
+		// Debemos obtener la posición del gasto en el array
+		let gastoId = this.gasto.gastoId;
+
+		// Generamos la url completa
+		let url = `${URL_BASE}${nombreUsuario}/${gastoId}`;
+
+		// Realizamos la petición
+		try {
+			let respuesta = await fetch(url, {
+				method: "DELETE",
+			});
+
+			if (respuesta.ok) {
+				alert("Borrado correctamente!");
+			}
+
+			cargarGastosApi();
+		} catch (error) {
+			alert(`Error: ${error}`);
+		}
+	},
+};
 
 /* Exportación */
 export { mostrarDatoEnId, mostrarGastoWeb, mostrarGastosAgrupadosWeb, repintar };
